@@ -2,8 +2,9 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { ChevronDown, RotateCcw, Share2 } from 'lucide-react'
 import MovieCard from '../shared/MovieCard'
+import PosterImage from '../shared/PosterImage'
 import ShareCardModal from './ShareCardModal'
-import { fetchCharacterBackdrop } from '../../lib/tmdb'
+import { fetchCharacterMedia } from '../../lib/tmdb'
 import type { AlterEgoCharacter, TMDBMovie } from '../../types'
 
 interface EgoRevealProps {
@@ -16,16 +17,18 @@ interface EgoRevealProps {
 export default function EgoReveal({ character, movies, moviesLoading, onRestart }: EgoRevealProps) {
   const [shareOpen, setShareOpen] = useState(false)
   const [backdrop, setBackdrop] = useState<string | null>(null)
+  const [portrait, setPortrait] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
-    fetchCharacterBackdrop(character.film_of_origin, character.year, character.actor_name ?? '')
-      .then((url) => {
+    fetchCharacterMedia(character.film_of_origin, character.year, character.actor_name ?? '')
+      .then((media) => {
         if (cancelled) return
-        setBackdrop(url)
+        setBackdrop(media.backdrop ?? media.profile)
+        setPortrait(media.poster ?? media.profile)
       })
       .catch((err) => {
-        console.warn('[CASTED] backdrop fetch failed', err)
+        console.warn('[CASTED] character media fetch failed', err)
       })
     return () => {
       cancelled = true
@@ -89,6 +92,28 @@ export default function EgoReveal({ character, movies, moviesLoading, onRestart 
           animate={{ opacity: [0.4, 0.85, 0.4], scale: [0.95, 1.05, 0.95] }}
           transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
         />
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.92, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
+          className="relative mb-10 overflow-hidden"
+          style={{
+            width: 'clamp(150px, 42vw, 196px)',
+            aspectRatio: '2 / 3',
+            border: '1px solid rgba(184,149,42,0.45)',
+            boxShadow:
+              '0 20px 60px -15px rgba(0,0,0,0.75), 0 0 44px -10px rgba(184,149,42,0.4)',
+          }}
+        >
+          <PosterImage
+            src={portrait}
+            alt={character.character_name}
+            title={character.character_name}
+            loading="eager"
+            className="h-full w-full object-cover"
+          />
+        </motion.div>
 
         <motion.p
           initial={{ scale: 0.8, opacity: 0 }}

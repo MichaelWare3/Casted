@@ -266,6 +266,55 @@ export async function fetchCharacterBackdrop(
   return null
 }
 
+export interface CharacterMedia {
+  /** Poster of the character's origin film (the main "this is you" portrait). */
+  poster: string | null
+  /** A film still for the ambient background. */
+  backdrop: string | null
+  /** The actor's photo, used as a fallback portrait. */
+  profile: string | null
+}
+
+/** Fetch the origin film's poster + backdrop and the actor's photo for the reveal. */
+export async function fetchCharacterMedia(
+  filmTitle: string,
+  year: number,
+  actorName: string,
+): Promise<CharacterMedia> {
+  let poster: string | null = null
+  let backdrop: string | null = null
+  let profile: string | null = null
+
+  try {
+    const params: TmdbParams = { query: filmTitle, include_adult: 'false' }
+    if (year) params.year = year
+    const res = await tmdbFetch('/search/movie', params)
+    if (res.ok) {
+      const data: TMDBSearchResponse = await res.json()
+      const hit = data.results?.[0]
+      if (hit?.poster_path) poster = `${TMDB_IMG_LARGE}${hit.poster_path}`
+      if (hit?.backdrop_path) backdrop = `${TMDB_IMG_ORIGINAL}${hit.backdrop_path}`
+    }
+  } catch (err) {
+    console.warn('[CASTED] character film media lookup failed', err)
+  }
+
+  if (actorName) {
+    try {
+      const res = await tmdbFetch('/search/person', { query: actorName, include_adult: 'false' })
+      if (res.ok) {
+        const data = await res.json()
+        const person = data?.results?.[0]
+        if (person?.profile_path) profile = `${TMDB_IMG_ORIGINAL}${person.profile_path}`
+      }
+    } catch (err) {
+      console.warn('[CASTED] character actor media lookup failed', err)
+    }
+  }
+
+  return { poster, backdrop, profile }
+}
+
 export function getYear(release_date?: string): string {
   if (!release_date) return ''
   return release_date.slice(0, 4)
