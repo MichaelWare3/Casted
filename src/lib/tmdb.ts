@@ -25,8 +25,10 @@ function tmdbFetch(path: string, params: TmdbParams = {}): Promise<Response> {
     search.set('api_key', getKey())
     return fetch(`${TMDB_BASE}${path}?${search.toString()}`)
   }
-  const qs = search.toString()
-  return fetch(`/api/tmdb${path}${qs ? `?${qs}` : ''}`)
+  // Flat serverless function takes the TMDB path as a query param (more reliable
+  // on Vercel than a catch-all route).
+  search.set('path', path)
+  return fetch(`/api/tmdb?${search.toString()}`)
 }
 
 export async function searchMovie(query: string): Promise<TMDBMovie | null> {
