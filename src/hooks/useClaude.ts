@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
-import { castAlterEgo } from '../lib/casting'
-import type { AlterEgoCharacter, QuizAnswer } from '../types'
+import { castAlterEgo, type CastSelection } from '../lib/casting'
+import type { AlterEgoCharacter } from '../types'
 
 interface UseClaudeState {
   character: AlterEgoCharacter | null
@@ -15,10 +15,10 @@ export function useClaude() {
     error: null,
   })
 
-  const generateAlterEgo = useCallback(async (answers: QuizAnswer[], tasteBlock = '') => {
+  const generateAlterEgo = useCallback(async (selections: CastSelection[], tasteBlock = '') => {
     setState({ character: null, loading: true, error: null })
     try {
-      const character = await castAlterEgo(answers, tasteBlock)
+      const character = await castAlterEgo(selections, tasteBlock)
 
       setState({ character, loading: false, error: null })
       return character

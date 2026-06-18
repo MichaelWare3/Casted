@@ -490,6 +490,20 @@ async function fetchTopRatedPage(page: number): Promise<TMDBMovie[]> {
   return results
 }
 
+/** Synchronous cache read — for instant first paint when today's pick is already cached. */
+export function readCachedPremiumPick(): PremiumPick | null {
+  try {
+    const raw = localStorage.getItem(PREMIUM_PICK_KEY)
+    if (!raw) return null
+    const cached = JSON.parse(raw) as PremiumPick
+    if (cached.date !== todayKey()) return null
+    if (!cached.movie?.id || !cached.movie?.backdrop_path) return null
+    return cached
+  } catch {
+    return null
+  }
+}
+
 export async function fetchPremiumPick(): Promise<PremiumPick> {
   const today = todayKey()
 

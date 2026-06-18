@@ -1,30 +1,38 @@
 import { motion } from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
-import type { QuizQuestion } from '../../types'
 
 interface QuestionCardProps {
-  question: QuizQuestion
+  id: number | string
+  prompt: string
+  options: string[]
   step: number // 1-based
   total: number
-  onAnswer: (option: { letter: 'A' | 'B' | 'C'; text: string }) => void
+  onAnswer: (index: number) => void
   onBack?: () => void
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
-export default function QuestionCard({ question, step, total, onAnswer, onBack }: QuestionCardProps) {
+export default function QuestionCard({
+  id,
+  prompt,
+  options,
+  step,
+  total,
+  onAnswer,
+  onBack,
+}: QuestionCardProps) {
   const canGoBack = !!onBack && step > 1
 
   return (
     <motion.div
-      key={question.id}
+      key={id}
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -18 }}
       transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       className="flex w-full max-w-2xl flex-col px-6"
     >
-      {/* Counter + back */}
       <div className="mb-5 flex items-center gap-3">
         {canGoBack && (
           <button
@@ -41,7 +49,6 @@ export default function QuestionCard({ question, step, total, onAnswer, onBack }
         </span>
       </div>
 
-      {/* Slim progress bar */}
       <div className="mb-10 h-px w-full bg-casted-cream/10">
         <motion.div
           className="h-px bg-casted-gold"
@@ -51,23 +58,21 @@ export default function QuestionCard({ question, step, total, onAnswer, onBack }
         />
       </div>
 
-      {/* Question */}
       <motion.h2
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         className="mb-14 font-display text-3xl italic leading-[1.15] text-casted-cream sm:mb-16 sm:text-4xl"
       >
-        {question.prompt}
+        {prompt}
       </motion.h2>
 
-      {/* Options — large glowing pills */}
       <div className="flex w-full flex-col items-stretch gap-4">
-        {question.options.map((option, i) => (
+        {options.map((option, i) => (
           <motion.button
-            key={option.letter}
+            key={option}
             type="button"
-            onClick={() => onAnswer(option)}
+            onClick={() => onAnswer(i)}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.18 + i * 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
@@ -75,7 +80,6 @@ export default function QuestionCard({ question, step, total, onAnswer, onBack }
             whileTap={{ scale: 0.985 }}
             className="group relative isolate overflow-hidden rounded-full border border-casted-gold/55 bg-[rgba(184,149,42,0.10)] px-9 py-6 text-center shadow-[0_0_38px_-10px_rgba(184,149,42,0.6)] transition-[background-color,border-color,box-shadow] duration-300 ease-out hover:border-casted-gold hover:bg-[rgba(184,149,42,0.15)] hover:shadow-[0_0_52px_-6px_rgba(184,149,42,0.78)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-casted-gold/60"
           >
-            {/* gold radiance — behind the text, affects only the pill */}
             <span
               aria-hidden="true"
               className="pointer-events-none absolute inset-0 -z-10 opacity-[0.85] transition-opacity duration-300 group-hover:opacity-100"
@@ -85,7 +89,7 @@ export default function QuestionCard({ question, step, total, onAnswer, onBack }
               }}
             />
             <span className="relative z-10 font-body text-lg font-medium leading-snug text-white sm:text-xl">
-              {option.text}
+              {option}
             </span>
           </motion.button>
         ))}

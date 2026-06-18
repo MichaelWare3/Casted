@@ -6,35 +6,50 @@ import {
   fetchPremiumPick,
   getDirector,
   getYear,
+  readCachedPremiumPick,
 } from '../../lib/tmdb'
 import { useTheater } from '../../hooks/useTheater'
+import type { PremiumPick } from '../../lib/tmdb'
 import type { TMDBMovie, TMDBMovieDetails } from '../../types'
 
-const BACKDROP_BASE = 'https://image.tmdb.org/t/p/original'
+const BACKDROP_BASE_HD = 'https://image.tmdb.org/t/p/w1280'
+const BACKDROP_BASE_LQ = 'https://image.tmdb.org/t/p/w300'
+
+// Kick the fetch off at module-evaluation time — runs before React even mounts
+// the component. If today's pick is cached, this resolves synchronously inside
+// fetchPremiumPick. If not, the network round-trip happens in parallel with
+// React hydration so by the time the component renders the data is often ready.
+const earlyPickPromise: Promise<PremiumPick> | null =
+  typeof window !== 'undefined' ? fetchPremiumPick().catch((err) => {
+    console.error("[CASTED] 👑 Premium Pick early fetch failed:", err)
+    throw err
+  }) : null
 
 interface PremiumPickHeroProps {
   onOpen: (movie: TMDBMovie) => void
 }
 
 export default function PremiumPickHero({ onOpen }: PremiumPickHeroProps) {
-  const [movie, setMovie] = useState<TMDBMovie | null>(null)
-  const [details, setDetails] = useState<TMDBMovieDetails | null>(null)
+  // Synchronous cache read on first render — instant paint on repeat visits.
+  const cached = typeof window !== 'undefined' ? readCachedPremiumPick() : null
+  const [movie, setMovie] = useState<TMDBMovie | null>(cached?.movie ?? null)
+  const [details, setDetails] = useState<TMDBMovieDetails | null>(cached?.details ?? null)
   const [errMsg, setErrMsg] = useState<string | null>(null)
+  const [hqLoaded, setHqLoaded] = useState(false)
   const { add, has } = useTheater()
 
   useEffect(() => {
+    if (!earlyPickPromise) return
     let cancelled = false
-    fetchPremiumPick()
+    earlyPickPromise
       .then((p) => {
         if (cancelled) return
-
         setMovie(p.movie)
         setDetails(p.details)
       })
       .catch((err: unknown) => {
         if (cancelled) return
         const msg = err instanceof Error ? err.message : String(err)
-        console.error("[CASTED] 👑 Premium Pick fetch failed:", err)
         setErrMsg(msg)
       })
     return () => {
@@ -67,20 +82,11 @@ export default function PremiumPickHero({ onOpen }: PremiumPickHeroProps) {
   }
 
   if (!movie) {
-    return (
-      <div
-        aria-hidden="true"
-        style={{
-          width: '100%',
-          minHeight: 'min(72vh, 720px)',
-          background:
-            'radial-gradient(ellipse at 50% 30%, #15151a 0%, #0a0a0b 70%)',
-        }}
-      />
-    )
+    return <PremiumPickSkeleton />
   }
 
-  const backdrop = movie.backdrop_path ? `${BACKDROP_BASE}${movie.backdrop_path}` : null
+  const backdropHd = movie.backdrop_path ? `${BACKDROP_BASE_HD}${movie.backdrop_path}` : null
+  const backdropLq = movie.backdrop_path ? `${BACKDROP_BASE_LQ}${movie.backdrop_path}` : null
   const dir = getDirector(details)
   const year = getYear(movie.release_date)
   const runtime = details?.runtime ? `${details.runtime} min` : ''
@@ -107,7 +113,7 @@ export default function PremiumPickHero({ onOpen }: PremiumPickHeroProps) {
         cursor: 'pointer',
       }}
     >
-      {backdrop && (
+      {backdropLq && (
         <motion.div
           aria-hidden="true"
           initial={{ opacity: 0, scale: 1.04 }}
@@ -115,23 +121,42 @@ export default function PremiumPickHero({ onOpen }: PremiumPickHeroProps) {
           transition={{ duration: 1.6, ease: 'easeOut' }}
           className="absolute inset-0"
         >
+          {/* LQIP — tiny blurred placeholder loads near-instantly */}
           <img
-            src={backdrop}
+            src={backdropLq}
             alt=""
-            loading="eager"
+            aria-hidden="true"
             decoding="async"
-            // @ts-expect-error fetchpriority is a valid newer HTML attribute not yet in React types
-            fetchpriority="high"
-            onError={(e) => {
-              // Decorative backdrop — hide it rather than show a broken icon.
-              ;(e.currentTarget as HTMLImageElement).style.display = 'none'
-            }}
-            className="h-full w-full object-cover"
+            className="absolute inset-0 h-full w-full object-cover"
             style={{
-              filter: 'brightness(0.92) contrast(1.08) saturate(1.06)',
-              imageRendering: 'auto',
+              filter: 'brightness(0.92) contrast(1.08) saturate(1.06) blur(24px)',
+              transform: 'scale(1.08)',
+              opacity: hqLoaded ? 0 : 1,
+              transition: 'opacity 0.6s ease',
             }}
           />
+          {/* HD backdrop — fades in on top once decoded */}
+          {backdropHd && (
+            <img
+              src={backdropHd}
+              alt=""
+              loading="eager"
+              decoding="async"
+              // @ts-expect-error fetchpriority is a valid newer HTML attribute not yet in React types
+              fetchpriority="high"
+              onLoad={() => setHqLoaded(true)}
+              onError={(e) => {
+                ;(e.currentTarget as HTMLImageElement).style.display = 'none'
+              }}
+              className="absolute inset-0 h-full w-full object-cover"
+              style={{
+                filter: 'brightness(0.92) contrast(1.08) saturate(1.06)',
+                imageRendering: 'auto',
+                opacity: hqLoaded ? 1 : 0,
+                transition: 'opacity 0.5s ease',
+              }}
+            />
+          )}
         </motion.div>
       )}
 
@@ -265,5 +290,79 @@ export default function PremiumPickHero({ onOpen }: PremiumPickHeroProps) {
         </motion.div>
       </div>
     </motion.section>
+  )
+}
+
+function PremiumPickSkeleton() {
+  return (
+    <section
+      aria-hidden="true"
+      className="relative w-full overflow-hidden"
+      style={{
+        minHeight: 'min(72vh, 720px)',
+        background:
+          'radial-gradient(ellipse at 50% 30%, #15151a 0%, #0a0a0b 70%)',
+      }}
+    >
+      <motion.div
+        className="pointer-events-none absolute inset-0"
+        initial={{ x: '-100%' }}
+        animate={{ x: '100%' }}
+        transition={{ duration: 1.8, ease: 'linear', repeat: Infinity }}
+        style={{
+          background:
+            'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.04) 45%, rgba(184,149,42,0.05) 50%, rgba(255,255,255,0.04) 55%, transparent 100%)',
+        }}
+      />
+
+      <div
+        className="absolute"
+        style={{ top: 'clamp(96px, 14vh, 132px)', left: 'clamp(24px, 5vw, 48px)' }}
+      >
+        <span
+          className="inline-flex items-center font-body text-[10px] uppercase tracking-[0.45em] text-casted-gold/60"
+          style={{
+            padding: '7px 14px',
+            border: '1px solid rgba(184,149,42,0.3)',
+            background: 'rgba(10,10,11,0.55)',
+            backdropFilter: 'blur(6px)',
+            WebkitBackdropFilter: 'blur(6px)',
+          }}
+        >
+          Premium Pick
+        </span>
+      </div>
+
+      <div
+        className="relative mx-auto flex h-full w-full max-w-7xl flex-col justify-end"
+        style={{
+          minHeight: 'min(72vh, 720px)',
+          padding: 'clamp(24px, 5vw, 56px)',
+          paddingBottom: 'clamp(40px, 7vh, 72px)',
+        }}
+      >
+        <div className="flex flex-col" style={{ gap: '18px' }}>
+          <SkeletonBar width="min(70%, 540px)" height="clamp(2.75rem, 6vw, 5.5rem)" />
+          <SkeletonBar width="min(45%, 360px)" height="14px" />
+          <div className="flex" style={{ gap: '12px', marginTop: '10px' }}>
+            <SkeletonBar width="140px" height="40px" />
+            <SkeletonBar width="140px" height="40px" />
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function SkeletonBar({ width, height }: { width: string; height: string }) {
+  return (
+    <div
+      style={{
+        width,
+        height,
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.04)',
+      }}
+    />
   )
 }
