@@ -11,6 +11,7 @@ const navItems = [
   { to: '/browse', label: 'Browse' },
   { to: '/drop', label: 'Daily Drop' },
   { to: '/theater', label: 'Theater' },
+  { to: '/you', label: 'You' },
 ]
 
 export default function Navbar() {

@@ -267,20 +267,23 @@ export async function fetchCharacterBackdrop(
 }
 
 export interface CharacterMedia {
-  /** Poster of the character's origin film (the main "this is you" portrait). */
+  /** Best in-character film still (a scene from the origin film) — the portrait. */
+  still: string | null
+  /** Poster of the origin film (secondary fallback). */
   poster: string | null
   /** A film still for the ambient background. */
   backdrop: string | null
-  /** The actor's photo, used as a fallback portrait. */
+  /** The actor's photo, used as a last-resort portrait. */
   profile: string | null
 }
 
-/** Fetch the origin film's poster + backdrop and the actor's photo for the reveal. */
+/** Fetch the origin film's best still + poster + backdrop and the actor's photo. */
 export async function fetchCharacterMedia(
   filmTitle: string,
   year: number,
   actorName: string,
 ): Promise<CharacterMedia> {
+  let still: string | null = null
   let poster: string | null = null
   let backdrop: string | null = null
   let profile: string | null = null
@@ -292,8 +295,13 @@ export async function fetchCharacterMedia(
     if (res.ok) {
       const data: TMDBSearchResponse = await res.json()
       const hit = data.results?.[0]
-      if (hit?.poster_path) poster = `${TMDB_IMG_LARGE}${hit.poster_path}`
-      if (hit?.backdrop_path) backdrop = `${TMDB_IMG_ORIGINAL}${hit.backdrop_path}`
+      if (hit) {
+        if (hit.poster_path) poster = `${TMDB_IMG_LARGE}${hit.poster_path}`
+        if (hit.backdrop_path) backdrop = `${TMDB_IMG_ORIGINAL}${hit.backdrop_path}`
+        // The community-upvoted best backdrop is the most striking scene still.
+        const bestPath = await fetchBestBackdrop(hit.id, hit.backdrop_path ?? null)
+        if (bestPath) still = `${TMDB_IMG_ORIGINAL}${bestPath}`
+      }
     }
   } catch (err) {
     console.warn('[CASTED] character film media lookup failed', err)
@@ -312,7 +320,7 @@ export async function fetchCharacterMedia(
     }
   }
 
-  return { poster, backdrop, profile }
+  return { still, poster, backdrop, profile }
 }
 
 export function getYear(release_date?: string): string {

@@ -24,8 +24,9 @@ export default function EgoReveal({ character, movies, moviesLoading, onRestart 
     fetchCharacterMedia(character.film_of_origin, character.year, character.actor_name ?? '')
       .then((media) => {
         if (cancelled) return
-        setBackdrop(media.backdrop ?? media.profile)
-        setPortrait(media.poster ?? media.profile)
+        setBackdrop(media.backdrop ?? media.still ?? media.profile)
+        // Prefer an in-character film still for the portrait.
+        setPortrait(media.still ?? media.backdrop ?? media.poster ?? media.profile)
       })
       .catch((err) => {
         console.warn('[CASTED] character media fetch failed', err)
@@ -99,11 +100,11 @@ export default function EgoReveal({ character, movies, moviesLoading, onRestart 
           transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
           className="relative mb-10 overflow-hidden"
           style={{
-            width: 'clamp(150px, 42vw, 196px)',
-            aspectRatio: '2 / 3',
+            width: 'clamp(280px, 84vw, 460px)',
+            aspectRatio: '16 / 9',
             border: '1px solid rgba(184,149,42,0.45)',
             boxShadow:
-              '0 20px 60px -15px rgba(0,0,0,0.75), 0 0 44px -10px rgba(184,149,42,0.4)',
+              '0 24px 70px -18px rgba(0,0,0,0.78), 0 0 48px -10px rgba(184,149,42,0.4)',
           }}
         >
           <PosterImage

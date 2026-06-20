@@ -8,6 +8,7 @@ import Director from './pages/Director'
 import Drop from './pages/Drop'
 import Theater from './pages/Theater'
 import Browse from './pages/Browse'
+import You from './pages/You'
 
 const transition = {
   initial: { opacity: 0, y: 8 },
@@ -46,6 +47,7 @@ function AnimatedRoutes() {
         <Route path="/drop" element={<PageWrap><Drop /></PageWrap>} />
         <Route path="/theater" element={<PageWrap><Theater /></PageWrap>} />
         <Route path="/browse" element={<PageWrap><Browse /></PageWrap>} />
+        <Route path="/you" element={<PageWrap><You /></PageWrap>} />
       </Routes>
     </AnimatePresence>
   )
