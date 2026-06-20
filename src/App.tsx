@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, useLocation, Navigate } from 'react-route
 import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect } from 'react'
 import FilmGrainOverlay from './components/layout/FilmGrainOverlay'
+import { AuthProvider } from './hooks/useAuth'
+import CloudSync from './components/auth/CloudSync'
 import Home from './pages/Home'
 import AlterEgo from './pages/AlterEgo'
 import Director from './pages/Director'
@@ -55,9 +57,12 @@ function AnimatedRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <FilmGrainOverlay />
-      <AnimatedRoutes />
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <FilmGrainOverlay />
+        <CloudSync />
+        <AnimatedRoutes />
+      </BrowserRouter>
+    </AuthProvider>
   )
 }

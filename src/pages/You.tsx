@@ -1,19 +1,25 @@
-import { useMemo } from 'react'
-import { motion } from 'framer-motion'
+import { useMemo, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
-import { Star } from 'lucide-react'
+import { Share2, Star } from 'lucide-react'
 import Navbar from '../components/layout/Navbar'
 import CharacterTile from '../components/identity/CharacterTile'
+import IdentityCardModal from '../components/identity/IdentityCardModal'
 import PosterImage from '../components/shared/PosterImage'
 import { posterUrl } from '../lib/tmdb'
 import { useTheater } from '../hooks/useTheater'
+import { useAuth } from '../hooks/useAuth'
+import AuthModal from '../components/auth/AuthModal'
 import { useDocTitle } from '../hooks/useDocTitle'
 import { getCastCharacters, identityLine, fingerprintTags } from '../lib/identity'
+import type { IdentityCardData } from '../lib/identityCard'
 import type { TheaterMovie } from '../types'
 
 export default function You() {
   useDocTitle('CASTED — Your Cinema')
   const { theater } = useTheater()
+  const { enabled, user, signOut } = useAuth()
+  const [authOpen, setAuthOpen] = useState(false)
 
   const cast = useMemo(() => getCastCharacters(), [])
   const line = useMemo(() => identityLine(cast), [cast])
@@ -29,6 +35,15 @@ export default function You() {
     .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
 
   const isEmpty = cast.length === 0 && theater.length === 0
+  const [cardOpen, setCardOpen] = useState(false)
+
+  const cardData: IdentityCardData = {
+    line,
+    traits: fingerprint,
+    characters: cast.slice(0, 3).map((c) => c.name),
+    lovedTitles: loved.slice(0, 3).map((f) => f.title),
+    stats: { films: theater.length, watched: watched.length, cast: cast.length },
+  }
 
   return (
     <div className="relative min-h-screen bg-casted-black">
@@ -82,6 +97,44 @@ export default function You() {
             aria-hidden="true"
             className="mt-8 block h-px w-28 origin-center bg-casted-gold"
           />
+
+          {!isEmpty && (
+            <motion.button
+              type="button"
+              onClick={() => setCardOpen(true)}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.55 }}
+              className="mt-8 inline-flex items-center gap-2 font-body text-xs uppercase tracking-widest text-casted-black transition-transform hover:scale-[1.03]"
+              style={{ padding: '11px 26px', background: '#B8952A', border: '1px solid #B8952A' }}
+            >
+              <Share2 size={13} strokeWidth={2} />
+              Share My Cinema
+            </motion.button>
+          )}
+
+          {enabled &&
+            (user ? (
+              <p className="mt-5 font-body text-[11px] text-casted-muted">
+                Synced as {user.email}
+                <span className="mx-2 text-casted-gold/40">·</span>
+                <button
+                  type="button"
+                  onClick={() => signOut()}
+                  className="uppercase tracking-widest transition-colors hover:text-casted-cream"
+                >
+                  Sign out
+                </button>
+              </p>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setAuthOpen(true)}
+                className="mt-5 font-body text-[11px] uppercase tracking-[0.25em] text-casted-gold/80 transition-colors hover:text-casted-gold"
+              >
+                Sign in to sync across devices
+              </button>
+            ))}
         </div>
 
         {isEmpty ? (
@@ -155,6 +208,11 @@ export default function You() {
           </div>
         )}
       </main>
+
+      <AnimatePresence>
+        {cardOpen && <IdentityCardModal data={cardData} onClose={() => setCardOpen(false)} />}
+        {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
+      </AnimatePresence>
     </div>
   )
 }

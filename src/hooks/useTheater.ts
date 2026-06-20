@@ -37,6 +37,20 @@ function persist(items: TheaterMovie[]) {
   emit()
 }
 
+// Cloud-sync helpers: snapshot, replace, and subscribe to the shared store.
+export function getTheaterSnapshot(): TheaterMovie[] {
+  return store
+}
+export function replaceTheater(items: TheaterMovie[]): void {
+  persist(items)
+}
+export function subscribeTheater(cb: (value: TheaterMovie[]) => void): () => void {
+  listeners.add(cb)
+  return () => {
+    listeners.delete(cb)
+  }
+}
+
 export function useTheater() {
   const [theater, setTheater] = useState<TheaterMovie[]>(store)
 

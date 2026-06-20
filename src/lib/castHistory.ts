@@ -1,9 +1,10 @@
-// Tracks every character a viewer has been cast as, so the engine never repeats
-// until the whole pool is exhausted (then it resets and starts fresh).
+// Tracks every character a viewer has been cast as. Backed by a shared in-memory
+// store + localStorage so it can be subscribed to (for cloud sync) and stays in
+// sync across hook instances in the tab.
 
 const STORAGE_KEY = 'casted_ego_history_v1'
 
-export function readCastHistory(): string[] {
+function read(): string[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     return raw ? (JSON.parse(raw) as string[]) : []
@@ -12,20 +13,46 @@ export function readCastHistory(): string[] {
   }
 }
 
-export function addToCastHistory(id: string): void {
+let store: string[] = read()
+const listeners = new Set<(value: string[]) => void>()
+
+function emit() {
+  for (const listener of listeners) listener(store)
+}
+
+function persist(ids: string[]) {
+  store = ids
   try {
-    const current = readCastHistory()
-    if (current.includes(id)) return
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...current, id]))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(ids))
   } catch {
-    /* storage unavailable — anti-repeat just won't persist this session */
+    /* storage unavailable — keep in-memory */
   }
+  emit()
+}
+
+export function readCastHistory(): string[] {
+  return store
+}
+
+export function addToCastHistory(id: string): void {
+  if (store.includes(id)) return
+  persist([...store, id])
 }
 
 export function resetCastHistory(): void {
-  try {
-    localStorage.removeItem(STORAGE_KEY)
-  } catch {
-    /* ignore */
+  persist([])
+}
+
+// Cloud-sync helpers.
+export function getCastHistorySnapshot(): string[] {
+  return store
+}
+export function replaceCastHistory(ids: string[]): void {
+  persist(ids)
+}
+export function subscribeCastHistory(cb: (value: string[]) => void): () => void {
+  listeners.add(cb)
+  return () => {
+    listeners.delete(cb)
   }
 }
