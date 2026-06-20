@@ -3,7 +3,9 @@ import { Link, NavLink } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Menu, X } from 'lucide-react'
 import ModeToggle from './ModeToggle'
+import AuthModal from '../auth/AuthModal'
 import { useTheater } from '../../hooks/useTheater'
+import { useAuth } from '../../hooks/useAuth'
 
 const navItems = [
   { to: '/cast-me', label: 'Cast Me' },
@@ -19,6 +21,8 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const { theater } = useTheater()
   const theaterCount = theater.length
+  const { enabled, user } = useAuth()
+  const [authOpen, setAuthOpen] = useState(false)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -37,6 +41,7 @@ export default function Navbar() {
   }, [menuOpen])
 
   return (
+    <>
     <header className="fixed inset-x-0 top-0" style={{ zIndex: 50 }}>
       <div
         aria-hidden="true"
@@ -95,7 +100,16 @@ export default function Navbar() {
           ))}
         </ul>
 
-        <div className="hidden md:block">
+        <div className="hidden items-center gap-5 md:flex">
+          {enabled && !user && (
+            <button
+              type="button"
+              onClick={() => setAuthOpen(true)}
+              className="font-body text-[10px] uppercase tracking-[0.35em] text-casted-cream/60 transition-colors duration-300 hover:text-casted-gold"
+            >
+              Sign In
+            </button>
+          )}
           <ModeToggle />
         </div>
 
@@ -172,12 +186,29 @@ export default function Navbar() {
               ))}
             </ul>
 
-            <div style={{ marginTop: '40px' }}>
+            <div className="flex flex-col items-center" style={{ marginTop: '40px', gap: '28px' }}>
+              {enabled && !user && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    setAuthOpen(true)
+                  }}
+                  className="font-body text-xs uppercase tracking-[0.3em] text-casted-gold/80 transition-colors hover:text-casted-gold"
+                >
+                  Sign In
+                </button>
+              )}
               <ModeToggle />
             </div>
           </motion.div>
         )}
       </AnimatePresence>
     </header>
+
+      <AnimatePresence>
+        {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
+      </AnimatePresence>
+    </>
   )
 }
